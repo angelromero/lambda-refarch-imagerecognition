@@ -8,10 +8,10 @@ export interface Config {
 }
 
 export const CONFIG: Config = {
-  DDBAlbumMetadataTable : "TO_BE_REPLACED",
-  CognitoIdentityPool : "TO_BE_REPLACED",
-  Region : "us-west-2",   // might be replaced if you launched the template in a different region
-  DDBImageMetadataTable : "TO_BE_REPLACED",
-  S3PhotoRepoBucket : "TO_BE_REPLACED",
-  DescribeExecutionLambda : "TO_BE_REPLACED"
+  DDBAlbumMetadataTable : "photo-sharing-backend-AlbumMetadataDDBTable-D5MEYA5RCNWP",
+  CognitoIdentityPool : "us-east-1:ab36615a-7dd4-4740-8c8f-05f8bef9fcd8",
+  Region : "us-east-1",   // might be replaced if you launched the template in a different region
+  DDBImageMetadataTable : "photo-sharing-backend-ImageMetadataDDBTable-OERXYHZGFL7Q",
+  S3PhotoRepoBucket : "photo-sharing-backend-photorepos3bucket-1ehh0cpiwmfo9",
+  DescribeExecutionLambda : "photo-sharing-backend-DescribeExecutionFunction-XG08R342B4XI"
 };

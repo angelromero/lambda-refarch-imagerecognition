@@ -124,7 +124,7 @@ Resources:
     Type: AWS::IAM::Role
   CreateS3EventTriggerFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/8c7e2179b5bc3480407509396c78b95e
+      CodeUri: s3://bsf002a/18d0f539f49c6a2157bc72b2ab281400
       Description: Used with CloudFormation as a custom resource helper to enable
         S3 event trigger to invoke the start step function Lambda function.
       Handler: index.handler
@@ -178,7 +178,7 @@ Resources:
     Type: AWS::IAM::Role
   DescribeExecutionFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/1f00cdd048caae4e89d5ce2a890ebe76
+      CodeUri: s3://bsf002a/1915788b420146552a1b713144bfad4a
       Description: Calls DescribeExecution on a state machine execution.
       Handler: index.handler
       MemorySize: 1024
@@ -225,7 +225,7 @@ Resources:
     Type: AWS::IAM::Role
   ExtractImageMetadataFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/85cfd440512536a13ea58fe42d838984
+      CodeUri: s3://bsf002a/75b7bbd7ca32bd45cc7bcb3ca1be7560
       Description: Extract image metadata such as format, size, geolocation, etc.
       Handler: index.handler
       MemorySize: 1024
@@ -238,7 +238,7 @@ Resources:
     Type: AWS::Serverless::Function
   GenerateThumbnailFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/bf7eda74763ba43004262c3a9867bbc9
+      CodeUri: s3://bsf002a/64da39da112fed3d5b5ef9aaae43ba12
       Description: Generate thumbnails for images
       Handler: index.handler
       MemorySize: 1536
@@ -280,7 +280,7 @@ Resources:
   ImageProcStartExecutionFunction:
     DependsOn: PhotoRepoS3Bucket
     Properties:
-      CodeUri: s3://media-sharing-refarch/2db09bf6931a36fae77883ec8c32f740
+      CodeUri: s3://bsf002a/5e8a4ac8952bb44f1c149878459450f1
       Description: Triggered by S3 image upload to the repo bucket and start the image
         processing step function workflow
       Environment:
@@ -397,7 +397,7 @@ Resources:
     Type: AWS::S3::Bucket
   RekognitionFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/31d08688ac4c72609539eba52cd520f8
+      CodeUri: s3://bsf002a/8d271153ce44084f03d9f1a63f7d6ee6
       Description: Use Amazon Rekognition to detect labels from image
       Handler: index.handler
       MemorySize: 256
@@ -454,7 +454,7 @@ Resources:
     Type: AWS::IAM::Role
   StoreImageMetadataFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/1a8335158b144e084df0e1aa485faeb5
+      CodeUri: s3://bsf002a/75db75cfe769f83d8dfd79ba3758754f
       Description: Store image metadata into database
       Environment:
         Variables:
@@ -537,7 +537,7 @@ Resources:
     Type: AWS::Cognito::IdentityPoolRoleAttachment
   TransformMetadataFunction:
     Properties:
-      CodeUri: s3://media-sharing-refarch/7761cb906913bffe76391119cff090f0
+      CodeUri: s3://bsf002a/c04bcad6028197dd0afd474814782306
       Description: massages JSON of extracted image metadata
       Handler: index.handler
       MemorySize: 256
