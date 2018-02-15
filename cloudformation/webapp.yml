@@ -241,7 +241,7 @@ Resources:
     Type: Custom::S3Objects
   S3ObjectsHelperFunction:
     Properties:
-      CodeUri: s3://bsf002webapp/dea600b517ef594f0174657e93322229
+      CodeUri: s3://bsf002webapp-us-east-1/dea600b517ef594f0174657e93322229
       Description: Copies objects from a source S3 bucket to a destination
       FunctionName:
         Fn::Sub: ${AWS::StackName}-S3ObjectsHelperFunction
