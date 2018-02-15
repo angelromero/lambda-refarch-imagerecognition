@@ -1,0 +1,306 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Media sharing website app deployment
+Outputs:
+  WebsiteURL:
+    Description: URL for media sharing website
+    Value:
+      Fn::GetAtt:
+      - WebSiteS3Bucket
+      - WebsiteURL
+Parameters:
+  Prefix:
+    Default: sfn-workshop
+    Description: Prefix for S3 buckets that will be created
+    Type: String
+  WebAppPrefix:
+    Default: webapp/
+    Description: Media sharing web app source S3 prefix
+    Type: String
+  WorkshopS3BucketBaseName:
+    Default: sfn-image-workshop
+    Description: Base name of S3 bucket containing the resources to copy over
+    Type: String
+  WorkshopSetupStack:
+    Default: sfn-workshop-setup
+    Description: name of the setup CloudFormation stack
+    Type: String
+Resources:
+  CodeBuildProject:
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: Media sharing website build project
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+        - Name: WebsiteBucketName
+          Value:
+            Ref: WebSiteS3Bucket
+        - Name: WorkshopSetupStack
+          Value:
+            Ref: WorkshopSetupStack
+        Image: aws/codebuild/nodejs:6.3.1
+        Type: LINUX_CONTAINER
+      Name:
+        Fn::Sub: ${Prefix}-build
+      ServiceRole:
+        Ref: CodeBuildProjectRole
+      Source:
+        Location:
+          Fn::Sub: arn:aws:s3:::${SourceS3Bucket}/${WebAppPrefix}webapp.zip
+        Type: S3
+      TimeoutInMinutes: 10
+    Type: AWS::CodeBuild::Project
+  CodeBuildProjectPolicies:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Effect: Allow
+          Resource:
+          - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Prefix}-build
+          - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Prefix}-build:*
+          Sid: CloudwatchLogsWriteAccess
+        - Action:
+          - s3:GetObject
+          - s3:GetObjectVersion
+          Effect: Allow
+          Resource:
+            Fn::Sub: arn:aws:s3:::${SourceS3Bucket}/${WebAppPrefix}*
+          Sid: WebAppS3KeyReadAccess
+        - Action:
+          - s3:GetObject
+          Effect: Allow
+          Resource:
+            Fn::Sub: arn:aws:s3:::${SourceS3Bucket}/*
+          Sid: ArctifactStoreReadAccess
+        - Action:
+          - s3:PutObject
+          - s3:DeleteObject
+          - s3:ListBucket
+          Effect: Allow
+          Resource:
+          - Fn::Sub: arn:aws:s3:::${WebSiteS3Bucket}
+          - Fn::Sub: arn:aws:s3:::${WebSiteS3Bucket}/*
+          Sid: WebSiteBucketAccess
+        - Action: ssm:GetParameters
+          Effect: Allow
+          Resource:
+            Fn::Sub: arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodeBuild/*
+          Sid: SSMParamsReadAccess
+        - Action: ssm:GetParameters
+          Effect: Allow
+          Resource:
+            Fn::Sub: arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodeBuild/*
+          Sid: CfnReadAccess
+        - Action:
+          - cloudformation:DescribeStackResource
+          Effect: Allow
+          Resource:
+            Fn::Sub: arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${WorkshopSetupStack}/*
+        Version: '2012-10-17'
+      PolicyName: permissions
+      Roles:
+      - Ref: CodeBuildProjectRole
+    Type: AWS::IAM::Policy
+  CodeBuildProjectRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - codebuild.amazonaws.com
+          Sid: TrustedEntities
+        Version: '2012-10-17'
+      Path: /
+    Type: AWS::IAM::Role
+  CodePipeline:
+    Properties:
+      ArtifactStore:
+        Location:
+          Ref: SourceS3Bucket
+        Type: S3
+      Name:
+        Fn::Sub: ${Prefix}-pipeline
+      RoleArn:
+        Fn::GetAtt:
+        - CodePipelineRole
+        - Arn
+      Stages:
+      - Actions:
+        - ActionTypeId:
+            Category: Source
+            Owner: AWS
+            Provider: S3
+            Version: 1
+          Configuration:
+            S3Bucket:
+              Ref: SourceS3Bucket
+            S3ObjectKey:
+              Fn::Sub: ${WebAppPrefix}webapp.zip
+          Name: Trigger
+          OutputArtifacts:
+          - Name: WebApp
+          RunOrder: 1
+        Name: Source
+      - Actions:
+        - ActionTypeId:
+            Category: Build
+            Owner: AWS
+            Provider: CodeBuild
+            Version: 1
+          Configuration:
+            ProjectName:
+              Ref: CodeBuildProject
+          InputArtifacts:
+          - Name: WebApp
+          Name: Build
+          RunOrder: 1
+        Name: Build
+    Type: AWS::CodePipeline::Pipeline
+  CodePipelinePolicies:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          - s3:GetObjectVersion
+          - s3:GetBucketVersioning
+          Effect: Allow
+          Resource: '*'
+          Sid: S3ReadAccess
+        - Action:
+          - s3:PutObject
+          Effect: Allow
+          Resource:
+          - Fn::Sub: arn:aws:s3:::${SourceS3Bucket}
+          - Fn::Sub: arn:aws:s3:::${SourceS3Bucket}/*
+          Sid: ActifactStoreWriteAccess
+        - Action:
+          - codebuild:BatchGetBuilds
+          - codebuild:StartBuild
+          Effect: Allow
+          Resource: '*'
+        Version: '2012-10-17'
+      PolicyName: permissions
+      Roles:
+      - Ref: CodePipelineRole
+    Type: AWS::IAM::Policy
+  CodePipelineRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - codepipeline.amazonaws.com
+          Sid: TrustedEntities
+        Version: '2012-10-17'
+      Path: /
+    Type: AWS::IAM::Role
+  CopyWebAppOver:
+    Properties:
+      Bucket:
+        Ref: SourceS3Bucket
+      Prefix:
+        Fn::Sub: ${WebAppPrefix}
+      ServiceToken:
+        Fn::GetAtt:
+        - S3ObjectsHelperFunction
+        - Arn
+      SourceBucket:
+        Fn::Sub: ${WorkshopS3BucketBaseName}-${AWS::Region}
+      SourcePrefix:
+        Fn::Sub: ${WebAppPrefix}
+    Type: Custom::S3Objects
+  EmptySourceS3Bucket:
+    Properties:
+      Bucket:
+        Ref: SourceS3Bucket
+      ServiceToken:
+        Fn::GetAtt:
+        - S3ObjectsHelperFunction
+        - Arn
+    Type: Custom::S3Objects
+  EmptyWebSiteS3Bucket:
+    Properties:
+      Bucket:
+        Ref: WebSiteS3Bucket
+      ServiceToken:
+        Fn::GetAtt:
+        - S3ObjectsHelperFunction
+        - Arn
+    Type: Custom::S3Objects
+  S3ObjectsHelperFunction:
+    Properties:
+      CodeUri: s3://bsf002webapp/dea600b517ef594f0174657e93322229
+      Description: Copies objects from a source S3 bucket to a destination
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-S3ObjectsHelperFunction
+      Handler: index.handler
+      Policies:
+        Statement:
+        - Action:
+          - s3:ListBucket
+          - s3:GetObject
+          Effect: Allow
+          Resource:
+          - Fn::Sub: arn:aws:s3:::${WorkshopS3BucketBaseName}-${AWS::Region}
+          - Fn::Sub: arn:aws:s3:::${WorkshopS3BucketBaseName}-${AWS::Region}/*
+          Sid: WorkshopS3BucketReadAccess
+        - Action:
+          - s3:ListBucket
+          - s3:ListBucketVersions
+          - s3:GetBucketVersioning
+          - s3:GetObject
+          - s3:GetObjectVersion
+          - s3:PutObject
+          - s3:PutObjectAcl
+          - s3:PutObjectVersionAcl
+          - s3:DeleteObject
+          - s3:DeleteObjectVersion
+          - s3:CopyObject
+          Effect: Allow
+          Resource:
+          - Fn::Sub: arn:aws:s3:::${SourceS3Bucket}
+          - Fn::Sub: arn:aws:s3:::${SourceS3Bucket}/*
+          - Fn::Sub: arn:aws:s3:::${WebSiteS3Bucket}
+          - Fn::Sub: arn:aws:s3:::${WebSiteS3Bucket}/*
+          Sid: DestinationBucketWriteAccess
+      Runtime: python2.7
+      Timeout: 120
+    Type: AWS::Serverless::Function
+  SourceS3Bucket:
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+    Type: AWS::S3::Bucket
+  WebSiteS3Bucket:
+    Properties:
+      WebsiteConfiguration:
+        ErrorDocument: error.html
+        IndexDocument: index.html
+    Type: AWS::S3::Bucket
+  WebSiteS3BucketPolicy:
+    Properties:
+      Bucket:
+        Ref: WebSiteS3Bucket
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          Effect: Allow
+          Principal: '*'
+          Resource:
+            Fn::Sub: arn:aws:s3:::${WebSiteS3Bucket}/*
+          Sid: WebSiteBucketReadAccess
+    Type: AWS::S3::BucketPolicy
+Transform: AWS::Serverless-2016-10-31
